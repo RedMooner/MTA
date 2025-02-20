@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, globalShortcut } = require('electron');
 const path = require('path');
 const { nativeImage } = require('electron');
 const extractIcon = require('./core/icon_extractor');
@@ -9,6 +9,15 @@ let mainWindow;
 
 
 function createWindow() {
+
+
+
+
+
+
+
+
+    
     mainWindow = new BrowserWindow({
         width: 800,
         height: 600,
@@ -37,7 +46,6 @@ function createWindow() {
 
 
 
-
 }
 
 
@@ -47,8 +55,21 @@ ipcMain.on("open-file",function(event,path){
     mainWindow.hide()
 })
 
+app.on('ready', () => {
+    createWindow();
 
-app.on('ready', createWindow);
+    // Регистрируем глобальный шорткат Ctrl + Alt
+    globalShortcut.register('A', () => {
+        if (mainWindow) {
+            if (mainWindow.isVisible()) {
+                mainWindow.hide();
+            } else {
+                mainWindow.show();
+            }
+        }
+    });
+});
+
 
 app.on('window-all-closed', function () {
     if (process.platform !== 'darwin') app.quit();
@@ -56,4 +77,9 @@ app.on('window-all-closed', function () {
 
 app.on('activate', function () {
     if (mainWindow === null) createWindow();
+});
+
+app.on('will-quit', () => {
+    // Отменяем регистрацию всех глобальных шорткатов при выходе из приложения
+    globalShortcut.unregisterAll();
 });
