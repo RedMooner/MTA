@@ -12,6 +12,14 @@ function createWindow() {
     mainWindow = new BrowserWindow({
         width: 800,
         height: 600,
+        alwaysOnTop: true,
+        transparent: true,
+        frame: false,
+        center: true,
+        movable: false,
+        resizable: false,
+        maximizable: false,
+        minimizable: false,
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: false,
@@ -25,12 +33,19 @@ function createWindow() {
     mainWindow.on('closed', function () {
         mainWindow = null;
     });
- 
-    
 
-    
-  
+
+
+
+
 }
+
+
+ipcMain.on("open-file",function(event,path){
+    const { exec } = require('child_process');
+    exec(path)
+    mainWindow.hide()
+})
 
 
 app.on('ready', createWindow);

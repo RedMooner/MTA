@@ -3,47 +3,213 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" 
-    content="script-src 'self' 'unsafe-inline';" />
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
     <title>File Icon Viewer</title>
     <style>
-        #drop-area {
+        /* Общие стили */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Блок с версией */
+        .version {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 14px;
+            color: #888;
+            z-index: 1000;
+        }
+
+        /* Сетка для файлов */
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px 15px; /* Меньше отступ по высоте, больше по ширине */
+            padding: 20px;
+            padding-top: 60px; /* Отступ сверху */
+            height: calc(100vh - 80px);
+            overflow-y: auto;
+        }
+
+        /* Блок с файлом */
+        .file-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            cursor: pointer;
+            background-color: rgba(255, 255, 255, 0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+            backdrop-filter: blur(10px);
+            opacity: 0.9;
+            aspect-ratio: 1 / 1; /* Делаем элементы квадратными */
+            position: relative;
+        }
+
+        .file-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            opacity: 1;
+        }
+
+        .file-item:active {
+            transform: scale(0.95);
+            transition: transform 0.1s ease;
+        }
+
+        .file-item.dragging {
+            opacity: 0.5;
+            transform: scale(0.9);
+        }
+
+        .file-item img {
+            max-width: 50px;
+            max-height: 50px;
+            margin-bottom: 10px;
+            transition: transform 0.2s ease;
+        }
+
+        .file-item:hover img {
+            transform: scale(1.1);
+        }
+
+        .file-item span {
+            font-size: 14px;
+            color: #ccc;
+            text-align: center;
+            word-break: break-all;
+            transition: opacity 0.2s ease;
+        }
+
+        .file-item input {
+            display: none;
+            width: 80%;
+            padding: 5px;
+            font-size: 14px;
+            color: #ccc;
+            background-color: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .file-item.editing span {
+            display: none;
+        }
+
+        .file-item.editing input {
+            display: block;
+        }
+
+        /* Анимация добавления новых элементов */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .file-item.new {
+            animation: fadeIn 0.3s ease;
+        }
+
+        /* Анимация удаления */
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: scale(1);
+            }
+            to {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+        }
+
+        .file-item.fade-out {
+            animation: fadeOut 0.2s ease forwards;
+        }
+
+        /* Контекстное меню */
+        .context-menu {
+            position: absolute;
+            background-color: rgba(40, 40, 40, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            display: none;
+        }
+
+        .context-menu ul {
+            list-style: none;
+            margin: 0;
+            padding: 5px 0;
+        }
+
+        .context-menu ul li {
+            padding: 8px 20px;
+            font-size: 14px;
+            color: #ccc;
+            cursor: pointer;
+        }
+
+        .context-menu ul li:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Эффект перетаскивания на все окно */
+        .drag-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
-            height: 200px;
-            border: 2px dashed #ccc;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
             display: flex;
             justify-content: center;
             align-items: center;
             font-size: 24px;
             color: #aaa;
-            transition: border-color 0.3s;
-            margin-bottom: 20px;
+            z-index: 999;
+            display: none;
+            pointer-events: none;
         }
-        #drop-area.dragover {
-            border-color: #000;
-        }
-        #grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-        }
-        .file-item {
+
+        .drag-overlay.active {
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 10px;
-            border: 1px solid #ccc;
-            cursor: pointer;
-        }
-        .file-item img {
-            max-width: 50px;
-            max-height: 50px;
         }
     </style>
 </head>
 <body>
-    <div id="drop-area">Перетащите файл сюда</div>
+    <div class="version">0.1.2 beta</div>
     <div id="grid"></div>
+
+    <!-- Контекстное меню -->
+    <div class="context-menu" id="context-menu">
+        <ul>
+            <li id="rename-file">Переименовать</li>
+            <li id="delete-file">Удалить</li>
+        </ul>
+    </div>
+
+    <!-- Оверлей для перетаскивания -->
+    <div class="drag-overlay" id="drag-overlay">Перетащите файл сюда</div>
 
     <script>
         const { webUtils } = require('electron')
@@ -51,23 +217,26 @@
         const extractIcon = require('../core/icon_extractor');
         const path = require('path');
 
-        const dropArea = document.getElementById('drop-area');
         const grid = document.getElementById('grid');
+        const contextMenu = document.getElementById('context-menu');
+        const dragOverlay = document.getElementById('drag-overlay');
 
-        dropArea.addEventListener('dragover', (event) => {
+        let selectedFileItem = null;
+        let isDragging = false;
+
+        // Обработка перетаскивания на все окно
+        document.addEventListener('dragover', (event) => {
             event.preventDefault();
-            dropArea.classList.add('dragover');
+            dragOverlay.classList.add('active');
         });
 
-        dropArea.addEventListener('dragleave', () => {
-            dropArea.classList.remove('dragover');
+        document.addEventListener('dragleave', () => {
+            dragOverlay.classList.remove('active');
         });
 
-        dropArea.addEventListener('drop', (event) => {
+        document.addEventListener('drop', (event) => {
             event.preventDefault();
-            event.stopPropagation();
-
-            dropArea.classList.remove('dragover');
+            dragOverlay.classList.remove('active');
 
             const files = event.dataTransfer.files;
             for (const file of files) {
@@ -75,6 +244,7 @@
             }
         });
 
+        // Добавление файла в сетку
         function addFileToGrid(file) {
             const exePath = path.join(__dirname, '..', 'native', 'iconex', 'IconExtracor.exe');
             const param = webUtils.getPathForFile(file);
@@ -85,9 +255,30 @@
                     const dataUrl = `data:image/png;base64,${base64String}`;
 
                     const fileItem = document.createElement('div');
-                    fileItem.classList.add('file-item');
+                    fileItem.classList.add('file-item', 'new');
                     fileItem.addEventListener('click', () => {
                         ipcRenderer.send('open-file', webUtils.getPathForFile(file));
+                    });
+
+                    // Контекстное меню
+                    fileItem.addEventListener('contextmenu', (event) => {
+                        event.preventDefault();
+                        selectedFileItem = fileItem;
+                        contextMenu.style.display = 'block';
+                        contextMenu.style.left = `${event.pageX}px`;
+                        contextMenu.style.top = `${event.pageY}px`;
+                    });
+
+                    // Перетаскивание элемента
+                    fileItem.draggable = true;
+                    fileItem.addEventListener('dragstart', () => {
+                        isDragging = true;
+                        fileItem.classList.add('dragging');
+                    });
+
+                    fileItem.addEventListener('dragend', () => {
+                        isDragging = false;
+                        fileItem.classList.remove('dragging');
                     });
 
                     const imgElement = document.createElement('img');
@@ -97,14 +288,62 @@
                     const fileName = document.createElement('span');
                     fileName.textContent = file.name;
 
+                    const inputElement = document.createElement('input');
+                    inputElement.type = 'text';
+                    inputElement.value = file.name;
+
+                    inputElement.addEventListener('keypress', (event) => {
+                        if (event.key === 'Enter') {
+                            fileName.textContent = inputElement.value;
+                            fileItem.classList.remove('editing');
+                        }
+                    });
+
+                    inputElement.addEventListener('blur', () => {
+                        fileName.textContent = inputElement.value;
+                        fileItem.classList.remove('editing');
+                    });
+
                     fileItem.appendChild(imgElement);
                     fileItem.appendChild(fileName);
+                    fileItem.appendChild(inputElement);
                     grid.appendChild(fileItem);
+
+                    // Убираем класс new после завершения анимации
+                    setTimeout(() => {
+                        fileItem.classList.remove('new');
+                    }, 300);
                 })
                 .catch(error => {
                     console.error(error);
                 });
         }
+
+        // Закрытие контекстного меню при клике вне его
+        document.addEventListener('click', () => {
+            contextMenu.style.display = 'none';
+        });
+
+        // Переименование файла
+        document.getElementById('rename-file').addEventListener('click', () => {
+            if (selectedFileItem) {
+                selectedFileItem.classList.add('editing');
+                const input = selectedFileItem.querySelector('input');
+                input.focus();
+                input.select();
+            }
+        });
+
+        // Удаление файла
+        document.getElementById('delete-file').addEventListener('click', () => {
+            if (selectedFileItem) {
+                selectedFileItem.classList.add('fade-out');
+                setTimeout(() => {
+                    selectedFileItem.remove();
+                    selectedFileItem = null;
+                }, 200);
+            }
+        });
 
         ipcRenderer.on('file-opened', (event, filePath) => {
             console.log(`File opened: ${filePath}`);
