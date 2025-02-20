@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Icon Viewer</title>
+    <style>
+        #drop-area {
+            width: 100%;
+            height: 100%;
+            border: 2px dashed #ccc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            color: #aaa;
+            transition: border-color 0.3s;
+        }
+        #file-icon {
+            margin-top: 20px;
+            max-width: 100px;
+            max-height: 100px;
+        }
+    </style>
+</head>
+<body>
+    <div id="drop-area">Перетащите файл сюда</div>
+    <img id="file-icon" src="" alt="File Icon" />
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        const extractIcon = require('../core/icon_extractor');
+        const path = require('path');
+
+        const exePath = path.join(__dirname, '..', 'native', 'iconex', 'IconExtracor.exe');
+        const param = "C:\\Users\\motyrev-am\\Desktop\\fuck.xlsx";
+
+        extractIcon(exePath, param)
+            .then(stdout => {
+                // Предположим, что stdout - это массив байтов
+                console.log(stdout)
+                const byteArray = new Uint8Array(stdout);
+                console.log(byteArray)
+
+                // Преобразуем массив байтов в Base64 строку
+                const base64String = stdout.trim();
+
+// Преобразуем Base64 строку в Data URL
+const dataUrl = `data:image/png;base64,${base64String}`;
+
+// Устанавливаем Data URL как источник изображения
+const imgElement = document.getElementById('file-icon');
+imgElement.src = dataUrl;
+            })
+            .catch(error => {
+                console.error(error);
+            });
+    </script>
+</body>
+</html>
