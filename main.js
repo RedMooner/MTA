@@ -1,11 +1,11 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
+const { nativeImage } = require('electron');
 const extractIcon = require('./core/icon_extractor');
+
 let mainWindow;
 
 
-const exePath = path.join(__dirname, 'native', 'iconex', 'IconExtracor.exe');
-const param = 'your_string_parameter_here';
 
 
 function createWindow() {
@@ -14,7 +14,9 @@ function createWindow() {
         height: 600,
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
-            nodeIntegration: true
+            contextIsolation: false,
+            enableRemoteModule: false,
+            nodeIntegration: true,
         },
     });
 
@@ -27,13 +29,7 @@ function createWindow() {
     
 
     
-    extractIcon(exePath, param)
-      .then(stdout => {
-        console.log(`stdout: ${stdout}`);
-      })
-      .catch(error => {
-        console.error(error);
-      });
+  
 }
 
 app.on('ready', createWindow);
@@ -45,5 +41,3 @@ app.on('window-all-closed', function () {
 app.on('activate', function () {
     if (mainWindow === null) createWindow();
 });
-
-

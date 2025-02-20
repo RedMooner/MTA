@@ -10,5 +10,9 @@
   "description": "",
   "devDependencies": {
     "electron": "^34.2.0"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "file-type": "^20.1.0"
   }
 }
