@@ -27,13 +27,73 @@
             z-index: 1000;
         }
 
+        /* Кнопка настроек */
+        .settings-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 24px;
+            color: #888;
+            cursor: pointer;
+            z-index: 1000;
+        }
+
+        /* Панель настроек */
+        .settings-panel {
+            position: absolute;
+            top: 50px;
+            right: 10px;
+            background-color: rgba(40, 40, 40, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            display: none;
+            z-index: 1000;
+            width: 200px;
+        }
+
+        .settings-panel label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #ccc;
+        }
+
+        .settings-panel input {
+            width: 100%;
+            padding: 5px;
+            font-size: 14px;
+            color: #ccc;
+            background-color: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .settings-panel button {
+            width: 100%;
+            padding: 8px;
+            font-size: 14px;
+            color: #ccc;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .settings-panel button:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
         /* Сетка для файлов */
         #grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 10px 15px; /* Меньше отступ по высоте, больше по ширине */
+            gap: 10px 15px;
             padding: 20px;
-            padding-top: 60px; /* Отступ сверху */
+            padding-top: 60px;
             height: calc(100vh - 80px);
             overflow-y: auto;
         }
@@ -52,7 +112,7 @@
             transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
             backdrop-filter: blur(10px);
             opacity: 0.9;
-            aspect-ratio: 1 / 1; /* Делаем элементы квадратными */
+            aspect-ratio: 1 / 1;
             position: relative;
         }
 
@@ -111,39 +171,25 @@
             display: block;
         }
 
-        /* Анимация добавления новых элементов */
+        /* Анимации и контекстное меню */
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .file-item.new {
             animation: fadeIn 0.3s ease;
         }
 
-        /* Анимация удаления */
         @keyframes fadeOut {
-            from {
-                opacity: 1;
-                transform: scale(1);
-            }
-            to {
-                opacity: 0;
-                transform: scale(0.8);
-            }
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0; transform: scale(0.8); }
         }
 
         .file-item.fade-out {
             animation: fadeOut 0.2s ease forwards;
         }
 
-        /* Контекстное меню */
         .context-menu {
             position: absolute;
             background-color: rgba(40, 40, 40, 0.9);
@@ -172,7 +218,6 @@
             background-color: rgba(255, 255, 255, 0.1);
         }
 
-        /* Эффект перетаскивания на все окно */
         .drag-overlay {
             position: fixed;
             top: 0;
@@ -198,6 +243,12 @@
 </head>
 <body>
     <div class="version">0.1.2 beta</div>
+    <div class="settings-button" id="settings-button">⚙️</div>
+    <div class="settings-panel" id="settings-panel">
+        <label for="shortcut-input">Сочетание клавиш:</label>
+        <input type="text" id="shortcut-input" placeholder="Нажмите сочетание клавиш">
+        <button id="save-shortcut">Сохранить</button>
+    </div>
     <div id="grid"></div>
 
     <!-- Контекстное меню -->
@@ -220,6 +271,10 @@
         const grid = document.getElementById('grid');
         const contextMenu = document.getElementById('context-menu');
         const dragOverlay = document.getElementById('drag-overlay');
+        const settingsButton = document.getElementById('settings-button');
+        const settingsPanel = document.getElementById('settings-panel');
+        const shortcutInput = document.getElementById('shortcut-input');
+        const saveShortcutButton = document.getElementById('save-shortcut');
 
         let selectedFileItem = null;
         let isDragging = false;
@@ -343,6 +398,31 @@
                     selectedFileItem = null;
                 }, 200);
             }
+        });
+
+        // Открытие/закрытие панели настроек
+        settingsButton.addEventListener('click', () => {
+            settingsPanel.style.display = settingsPanel.style.display === 'block' ? 'none' : 'block';
+        });
+
+        // Обработка ввода сочетания клавиш
+        shortcutInput.addEventListener('keydown', (event) => {
+            event.preventDefault();
+            const keys = [];
+            if (event.ctrlKey || event.metaKey) keys.push('CommandOrControl');
+            if (event.altKey) keys.push('Alt');
+            if (event.shiftKey) keys.push('Shift');
+            if (event.key !== 'Control' && event.key !== 'Alt' && event.key !== 'Shift' && event.key !== 'Meta') {
+                keys.push(event.key.toUpperCase());
+            }
+            shortcutInput.value = keys.join(' + ');
+        });
+
+        // Сохранение нового сочетания клавиш
+        saveShortcutButton.addEventListener('click', () => {
+            const newShortcut = shortcutInput.value;
+            ipcRenderer.send('update-shortcut', newShortcut);
+            settingsPanel.style.display = 'none';
         });
 
         ipcRenderer.on('file-opened', (event, filePath) => {
