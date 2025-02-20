@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" 
+    content="script-src 'self' 'unsafe-inline';" />
     <title>File Icon Viewer</title>
     <style>
         #drop-area {
             width: 100%;
-            height: 100%;
+            height: 200px;
             border: 2px dashed #ccc;
             display: flex;
             justify-content: center;
@@ -15,46 +17,98 @@
             font-size: 24px;
             color: #aaa;
             transition: border-color 0.3s;
+            margin-bottom: 20px;
         }
-        #file-icon {
-            margin-top: 20px;
-            max-width: 100px;
-            max-height: 100px;
+        #drop-area.dragover {
+            border-color: #000;
+        }
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+        .file-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+        }
+        .file-item img {
+            max-width: 50px;
+            max-height: 50px;
         }
     </style>
 </head>
 <body>
     <div id="drop-area">Перетащите файл сюда</div>
-    <img id="file-icon" src="" alt="File Icon" />
+    <div id="grid"></div>
 
     <script>
+        const { webUtils } = require('electron')
         const { ipcRenderer } = require('electron');
         const extractIcon = require('../core/icon_extractor');
         const path = require('path');
 
-        const exePath = path.join(__dirname, '..', 'native', 'iconex', 'IconExtracor.exe');
-        const param = "C:\\Users\\motyrev-am\\Desktop\\fuck.xlsx";
+        const dropArea = document.getElementById('drop-area');
+        const grid = document.getElementById('grid');
 
-        extractIcon(exePath, param)
-            .then(stdout => {
-                // Предположим, что stdout - это массив байтов
-                console.log(stdout)
-                const byteArray = new Uint8Array(stdout);
-                console.log(byteArray)
+        dropArea.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            dropArea.classList.add('dragover');
+        });
 
-                // Преобразуем массив байтов в Base64 строку
-                const base64String = stdout.trim();
+        dropArea.addEventListener('dragleave', () => {
+            dropArea.classList.remove('dragover');
+        });
 
-// Преобразуем Base64 строку в Data URL
-const dataUrl = `data:image/png;base64,${base64String}`;
+        dropArea.addEventListener('drop', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
 
-// Устанавливаем Data URL как источник изображения
-const imgElement = document.getElementById('file-icon');
-imgElement.src = dataUrl;
-            })
-            .catch(error => {
-                console.error(error);
-            });
+            dropArea.classList.remove('dragover');
+
+            const files = event.dataTransfer.files;
+            for (const file of files) {
+                addFileToGrid(file);
+            }
+        });
+
+        function addFileToGrid(file) {
+            const exePath = path.join(__dirname, '..', 'native', 'iconex', 'IconExtracor.exe');
+            const param = webUtils.getPathForFile(file);
+            
+            extractIcon(exePath, param)
+                .then(stdout => {
+                    const base64String = stdout.trim();
+                    const dataUrl = `data:image/png;base64,${base64String}`;
+
+                    const fileItem = document.createElement('div');
+                    fileItem.classList.add('file-item');
+                    fileItem.addEventListener('click', () => {
+                        ipcRenderer.send('open-file', webUtils.getPathForFile(file));
+                    });
+
+                    const imgElement = document.createElement('img');
+                    imgElement.src = dataUrl;
+                    imgElement.alt = file.name;
+
+                    const fileName = document.createElement('span');
+                    fileName.textContent = file.name;
+
+                    fileItem.appendChild(imgElement);
+                    fileItem.appendChild(fileName);
+                    grid.appendChild(fileItem);
+                })
+                .catch(error => {
+                    console.error(error);
+                });
+        }
+
+        ipcRenderer.on('file-opened', (event, filePath) => {
+            console.log(`File opened: ${filePath}`);
+        });
     </script>
 </body>
 </html>
