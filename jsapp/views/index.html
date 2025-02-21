@@ -285,11 +285,118 @@
             display: flex;
             opacity: 1;
         }
+        /* Меню поиска и фильтрации */
+.search-menu {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(30, 30, 30, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    width: 400px;
+    padding: 20px;
+    z-index: 1001;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
 
-        /* Анимация перемещения */
-        .file-item.moving {
-            transition: transform 0.3s ease;
-        }
+.search-menu.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.search-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+#search-input {
+    flex: 1;
+    padding: 8px;
+    font-size: 14px;
+    color: #ccc;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+}
+
+#filter-select {
+    padding: 8px;
+    font-size: 14px;
+    color: #ccc;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+#close-search-menu {
+    background: none;
+    border: none;
+    color: #ccc;
+    font-size: 20px;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+#close-search-menu:hover {
+    color: #fff;
+}
+
+.search-results {
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+.search-results::-webkit-scrollbar {
+    width: 8px;
+}
+
+.search-results::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.search-results::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+.search-results::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.search-result-item {
+    padding: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.search-result-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+/* Подсветка найденного файла */
+.highlight {
+    animation: highlight 1.5s ease;
+}
+
+@keyframes highlight {
+    0% { background-color: rgba(255, 255, 255, 0.1); }
+    50% { background-color: rgba(255, 255, 255, 0.3); }
+    100% { background-color: rgba(255, 255, 255, 0.1); }
+}
     </style>
 </head>
 <body>
@@ -309,7 +416,20 @@
             <li id="delete-file">Удалить</li>
         </ul>
     </div>
-
+<!-- Меню поиска и фильтрации -->
+<div class="search-menu" id="search-menu">
+    <div class="search-header">
+        <input type="text" id="search-input" placeholder="Поиск файлов..." />
+        <select id="filter-select">
+            <option value="all">Все файлы</option>
+            <option value="image">Изображения</option>
+            <option value="document">Документы</option>
+            <option value="executable">Исполняемые файлы</option>
+        </select>
+        <button id="close-search-menu">×</button>
+    </div>
+    <div class="search-results" id="search-results"></div>
+</div>
     <!-- Оверлей для перетаскивания -->
     <div class="drag-overlay" id="drag-overlay">Перетащите файл сюда</div>
 
@@ -326,10 +446,76 @@
         const settingsPanel = document.getElementById('settings-panel');
         const shortcutInput = document.getElementById('shortcut-input');
         const saveShortcutButton = document.getElementById('save-shortcut');
+        const searchMenu = document.getElementById('search-menu');
+const searchInput = document.getElementById('search-input');
+const filterSelect = document.getElementById('filter-select');
+const searchResults = document.getElementById('search-results');
+const closeSearchMenuButton = document.getElementById('close-search-menu');
 
+// Открытие меню поиска
+function openSearchMenu() {
+    searchMenu.classList.add('visible');
+    searchInput.focus();
+}
+
+// Закрытие меню поиска
+function closeSearchMenu() {
+    searchMenu.classList.remove('visible');
+}
+
+// Поиск и фильтрация файлов
+function searchFiles() {
+    const query = searchInput.value.toLowerCase();
+    const filter = filterSelect.value;
+    const fileItems = document.querySelectorAll('.file-item');
+
+    searchResults.innerHTML = '';
+
+    fileItems.forEach((fileItem) => {
+        const fileName = fileItem.querySelector('span').textContent.toLowerCase();
+        const fileType = getFileType(fileName);
+
+        if ((filter === 'all' || fileType === filter) && fileName.includes(query)) {
+            const resultItem = document.createElement('div');
+            resultItem.classList.add('search-result-item');
+            resultItem.textContent = fileName;
+            resultItem.addEventListener('click', () => {
+                fileItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                fileItem.classList.add('highlight');
+                setTimeout(() => fileItem.classList.remove('highlight'), 2000);
+                closeSearchMenu();
+            });
+            searchResults.appendChild(resultItem);
+        }
+    });
+}
+
+// Определение типа файла
+function getFileType(fileName) {
+    if (fileName.endsWith('.png') || fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.gif')) {
+        return 'image';
+    } else if (fileName.endsWith('.txt') || fileName.endsWith('.doc') || fileName.endsWith('.pdf')) {
+        return 'document';
+    } else if (fileName.endsWith('.exe') || fileName.endsWith('.app')) {
+        return 'executable';
+    }
+    return 'other';
+}
+
+// Обработчики событий
+searchInput.addEventListener('input', searchFiles);
+filterSelect.addEventListener('change', searchFiles);
+closeSearchMenuButton.addEventListener('click', closeSearchMenu);
+
+// Открытие меню по сочетанию клавиш (например, Ctrl + F)
+document.addEventListener('keydown', (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
+        event.preventDefault();
+        openSearchMenu();
+    }
+});
         let selectedFileItem = null;
         let isDraggingFileItem = false; // Флаг для определения, перетаскивается ли file-item
-        let dragSrcEl = null;
 
         // Обработка перетаскивания на все окно
         document.addEventListener('dragover', (event) => {
@@ -397,13 +583,24 @@
                     fileItem.addEventListener('dragover', (event) => {
                         event.preventDefault();
                         event.dataTransfer.dropEffect = 'move';
+                        fileItem.classList.add('drag-over');
+                    });
+
+                    fileItem.addEventListener('dragleave', () => {
+                        fileItem.classList.remove('drag-over');
+                    });
+
+                    fileItem.addEventListener('drop', (event) => {
+                        event.preventDefault();
                         if (dragSrcEl !== fileItem) {
-                            swapElements(dragSrcEl, fileItem);
+                            dragSrcEl.innerHTML = fileItem.innerHTML;
+                            fileItem.innerHTML = event.dataTransfer.getData('text/html');
                         }
+                        fileItem.classList.remove('drag-over');
                     });
 
                     fileItem.addEventListener('dragend', () => {
-                        fileItem.classList.remove('dragging');
+                        fileItem.classList.remove('dragging', 'drag-over');
                         isDraggingFileItem = false; // Сброс флага после завершения перетаскивания
                     });
 
@@ -443,25 +640,6 @@
                 .catch(error => {
                     console.error(error);
                 });
-        }
-
-        // Функция для обмена элементов с анимацией
-        function swapElements(element1, element2) {
-            const temp = document.createElement('div');
-            grid.insertBefore(temp, element1);
-            grid.insertBefore(element1, element2);
-            grid.insertBefore(element2, temp);
-            grid.removeChild(temp);
-
-            // Добавляем класс для анимации
-            element1.classList.add('moving');
-            element2.classList.add('moving');
-
-            // Убираем класс после завершения анимации
-            setTimeout(() => {
-                element1.classList.remove('moving');
-                element2.classList.remove('moving');
-            }, 300);
         }
 
         // Закрытие контекстного меню при клике вне его
@@ -508,7 +686,7 @@
             if (event.ctrlKey || event.metaKey) keys.push('CommandOrControl');
             if (event.altKey) keys.push('Alt');
             if (event.shiftKey) keys.push('Shift');
-            if (/^[A-Za-z0-9]$/.test(event.key)) { // Разрешаем только латинские буквы и цифры
+            if (event.key !== 'Control' && event.key !== 'Alt' && event.key !== 'Shift' && event.key !== 'Meta') {
                 keys.push(event.key.toUpperCase());
             }
             shortcutInput.value = keys.join(' + ');
@@ -528,5 +706,4 @@
             console.log(`File opened: ${filePath}`);
         });
     </script>
-</body>
-</html>
+</body
