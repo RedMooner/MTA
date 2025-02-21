@@ -34,7 +34,7 @@ function createWindow() {
 
     // Добавляем обводку и полупрозрачность
     mainWindow.setBackgroundColor('#1e1e1e80'); // Полупрозрачный цвет фона
-    mainWindow.setOpacity(0.9); // Полупрозрачность окна
+    mainWindow.setOpacity(1); // Полупрозрачность окна
 }
 
 ipcMain.on("open-file", function (event, path) {

@@ -11,7 +11,7 @@
             margin: 0;
             padding: 0;
             font-family: 'Arial', sans-serif;
-            background-color: #1e1e1e;
+            background-color: #121212; /* Более темный фон */
             color: #ffffff;
             height: 100vh;
             overflow: hidden;
@@ -36,6 +36,11 @@
             color: #888;
             cursor: pointer;
             z-index: 1000;
+            transition: transform 0.2s ease;
+        }
+
+        .settings-button:hover {
+            transform: scale(1.1);
         }
 
         /* Панель настроек */
@@ -43,7 +48,7 @@
             position: absolute;
             top: 50px;
             right: 10px;
-            background-color: rgba(40, 40, 40, 0.9);
+            background-color: rgba(30, 30, 30, 0.9); /* Более темный фон */
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 5px;
             backdrop-filter: blur(10px);
@@ -52,6 +57,14 @@
             display: none;
             z-index: 1000;
             width: 200px;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .settings-panel.visible {
+            opacity: 1;
+            transform: translateY(0);
         }
 
         .settings-panel label {
@@ -81,6 +94,7 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
+            transition: background-color 0.2s ease;
         }
 
         .settings-panel button:hover {
@@ -90,12 +104,30 @@
         /* Сетка для файлов */
         #grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 10px 15px;
-            padding: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); /* Увеличен размер ячеек */
+            gap: 5px; /* Уменьшен отступ */
+            padding: 10px; /* Уменьшен отступ */
             padding-top: 60px;
-            height: calc(100vh - 80px);
             overflow-y: auto;
+        }
+
+        /* Стилизация скроллбара */
+        #grid::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #grid::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        #grid::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        #grid::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
 
         /* Блок с файлом */
@@ -104,7 +136,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 15px;
+            padding: 10px; /* Уменьшен отступ */
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 10px;
             cursor: pointer;
@@ -120,6 +152,7 @@
             transform: translateY(-5px);
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
             opacity: 1;
+            border: 1px solid rgba(255, 255, 255, 0.3);
         }
 
         .file-item:active {
@@ -133,10 +166,11 @@
         }
 
         .file-item img {
-            max-width: 50px;
-            max-height: 50px;
+            max-width: 240px; /* Увеличены иконки в 2 раза */
+            max-height: 240px; /* Увеличены иконки в 2 раза */
             margin-bottom: 10px;
             transition: transform 0.2s ease;
+            image-rendering: crisp-edges;
         }
 
         .file-item:hover img {
@@ -192,13 +226,21 @@
 
         .context-menu {
             position: absolute;
-            background-color: rgba(40, 40, 40, 0.9);
+            background-color: rgba(30, 30, 30, 0.9); /* Более темный фон */
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 5px;
             backdrop-filter: blur(10px);
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
             z-index: 1000;
             display: none;
+            opacity: 0;
+            transform: scale(0.9);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .context-menu.visible {
+            opacity: 1;
+            transform: scale(1);
         }
 
         .context-menu ul {
@@ -212,6 +254,7 @@
             font-size: 14px;
             color: #ccc;
             cursor: pointer;
+            transition: background-color 0.2s ease;
         }
 
         .context-menu ul li:hover {
@@ -234,10 +277,13 @@
             z-index: 999;
             display: none;
             pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
         }
 
         .drag-overlay.active {
             display: flex;
+            opacity: 1;
         }
     </style>
 </head>
@@ -277,26 +323,33 @@
         const saveShortcutButton = document.getElementById('save-shortcut');
 
         let selectedFileItem = null;
-        let isDragging = false;
+        let isDraggingFileItem = false; // Флаг для определения, перетаскивается ли file-item
 
         // Обработка перетаскивания на все окно
         document.addEventListener('dragover', (event) => {
             event.preventDefault();
-            dragOverlay.classList.add('active');
+            if (!isDraggingFileItem) {
+                dragOverlay.classList.add('active');
+            }
         });
 
         document.addEventListener('dragleave', () => {
-            dragOverlay.classList.remove('active');
+            if (!isDraggingFileItem) {
+                dragOverlay.classList.remove('active');
+            }
         });
 
         document.addEventListener('drop', (event) => {
             event.preventDefault();
-            dragOverlay.classList.remove('active');
+            if (!isDraggingFileItem) {
+                dragOverlay.classList.remove('active');
 
-            const files = event.dataTransfer.files;
-            for (const file of files) {
-                addFileToGrid(file);
+                const files = event.dataTransfer.files;
+                for (const file of files) {
+                    addFileToGrid(file);
+                }
             }
+            isDraggingFileItem = false; // Сброс флага после завершения перетаскивания
         });
 
         // Добавление файла в сетку
@@ -320,20 +373,43 @@
                         event.preventDefault();
                         selectedFileItem = fileItem;
                         contextMenu.style.display = 'block';
+                        contextMenu.classList.add('visible');
                         contextMenu.style.left = `${event.pageX}px`;
                         contextMenu.style.top = `${event.pageY}px`;
                     });
 
                     // Перетаскивание элемента
                     fileItem.draggable = true;
-                    fileItem.addEventListener('dragstart', () => {
-                        isDragging = true;
+                    fileItem.addEventListener('dragstart', (event) => {
+                        isDraggingFileItem = true; // Устанавливаем флаг, что перетаскивается file-item
+                        dragSrcEl = fileItem;
+                        event.dataTransfer.effectAllowed = 'move';
+                        event.dataTransfer.setData('text/html', fileItem.innerHTML);
                         fileItem.classList.add('dragging');
                     });
 
+                    fileItem.addEventListener('dragover', (event) => {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = 'move';
+                        fileItem.classList.add('drag-over');
+                    });
+
+                    fileItem.addEventListener('dragleave', () => {
+                        fileItem.classList.remove('drag-over');
+                    });
+
+                    fileItem.addEventListener('drop', (event) => {
+                        event.preventDefault();
+                        if (dragSrcEl !== fileItem) {
+                            dragSrcEl.innerHTML = fileItem.innerHTML;
+                            fileItem.innerHTML = event.dataTransfer.getData('text/html');
+                        }
+                        fileItem.classList.remove('drag-over');
+                    });
+
                     fileItem.addEventListener('dragend', () => {
-                        isDragging = false;
-                        fileItem.classList.remove('dragging');
+                        fileItem.classList.remove('dragging', 'drag-over');
+                        isDraggingFileItem = false; // Сброс флага после завершения перетаскивания
                     });
 
                     const imgElement = document.createElement('img');
@@ -376,7 +452,10 @@
 
         // Закрытие контекстного меню при клике вне его
         document.addEventListener('click', () => {
-            contextMenu.style.display = 'none';
+            contextMenu.classList.remove('visible');
+            setTimeout(() => {
+                contextMenu.style.display = 'none';
+            }, 200);
         });
 
         // Переименование файла
@@ -402,7 +481,10 @@
 
         // Открытие/закрытие панели настроек
         settingsButton.addEventListener('click', () => {
-            settingsPanel.style.display = settingsPanel.style.display === 'block' ? 'none' : 'block';
+            settingsPanel.style.display = 'block';
+            setTimeout(() => {
+                settingsPanel.classList.toggle('visible');
+            }, 10);
         });
 
         // Обработка ввода сочетания клавиш
@@ -422,12 +504,14 @@
         saveShortcutButton.addEventListener('click', () => {
             const newShortcut = shortcutInput.value;
             ipcRenderer.send('update-shortcut', newShortcut);
-            settingsPanel.style.display = 'none';
+            settingsPanel.classList.remove('visible');
+            setTimeout(() => {
+                settingsPanel.style.display = 'none';
+            }, 200);
         });
 
         ipcRenderer.on('file-opened', (event, filePath) => {
             console.log(`File opened: ${filePath}`);
         });
     </script>
-</body>
-</html>
+</body
