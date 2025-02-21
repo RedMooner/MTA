@@ -37,9 +37,16 @@ function createWindow() {
     mainWindow.setOpacity(1); // Полупрозрачность окна
 }
 
+const { shell } = require('electron');
+
 ipcMain.on("open-file", function (event, path) {
-    const { exec } = require('child_process');
-    exec(path);
+    shell.openPath(path).then((error) => {
+        if (error) {
+            console.error(`Ошибка при открытии файла: ${error}`);
+            return;
+        }
+        console.log(`Файл ${path} успешно открыт.`);
+    });
     mainWindow.hide();
 });
 

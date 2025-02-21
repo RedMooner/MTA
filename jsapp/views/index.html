@@ -285,6 +285,11 @@
             display: flex;
             opacity: 1;
         }
+
+        /* Анимация перемещения */
+        .file-item.moving {
+            transition: transform 0.3s ease;
+        }
     </style>
 </head>
 <body>
@@ -324,6 +329,7 @@
 
         let selectedFileItem = null;
         let isDraggingFileItem = false; // Флаг для определения, перетаскивается ли file-item
+        let dragSrcEl = null;
 
         // Обработка перетаскивания на все окно
         document.addEventListener('dragover', (event) => {
@@ -391,24 +397,13 @@
                     fileItem.addEventListener('dragover', (event) => {
                         event.preventDefault();
                         event.dataTransfer.dropEffect = 'move';
-                        fileItem.classList.add('drag-over');
-                    });
-
-                    fileItem.addEventListener('dragleave', () => {
-                        fileItem.classList.remove('drag-over');
-                    });
-
-                    fileItem.addEventListener('drop', (event) => {
-                        event.preventDefault();
                         if (dragSrcEl !== fileItem) {
-                            dragSrcEl.innerHTML = fileItem.innerHTML;
-                            fileItem.innerHTML = event.dataTransfer.getData('text/html');
+                            swapElements(dragSrcEl, fileItem);
                         }
-                        fileItem.classList.remove('drag-over');
                     });
 
                     fileItem.addEventListener('dragend', () => {
-                        fileItem.classList.remove('dragging', 'drag-over');
+                        fileItem.classList.remove('dragging');
                         isDraggingFileItem = false; // Сброс флага после завершения перетаскивания
                     });
 
@@ -448,6 +443,25 @@
                 .catch(error => {
                     console.error(error);
                 });
+        }
+
+        // Функция для обмена элементов с анимацией
+        function swapElements(element1, element2) {
+            const temp = document.createElement('div');
+            grid.insertBefore(temp, element1);
+            grid.insertBefore(element1, element2);
+            grid.insertBefore(element2, temp);
+            grid.removeChild(temp);
+
+            // Добавляем класс для анимации
+            element1.classList.add('moving');
+            element2.classList.add('moving');
+
+            // Убираем класс после завершения анимации
+            setTimeout(() => {
+                element1.classList.remove('moving');
+                element2.classList.remove('moving');
+            }, 300);
         }
 
         // Закрытие контекстного меню при клике вне его
@@ -494,7 +508,7 @@
             if (event.ctrlKey || event.metaKey) keys.push('CommandOrControl');
             if (event.altKey) keys.push('Alt');
             if (event.shiftKey) keys.push('Shift');
-            if (event.key !== 'Control' && event.key !== 'Alt' && event.key !== 'Shift' && event.key !== 'Meta') {
+            if (/^[A-Za-z0-9]$/.test(event.key)) { // Разрешаем только латинские буквы и цифры
                 keys.push(event.key.toUpperCase());
             }
             shortcutInput.value = keys.join(' + ');
@@ -514,4 +528,5 @@
             console.log(`File opened: ${filePath}`);
         });
     </script>
-</body
+</body>
+</html>
